@@ -16,13 +16,13 @@ M = sp.Matrix([[a[0], a[1], a[2]],
                [a[6], a[7], a[8]]])
 
 # ========== Define equations ==========
-# Requirements: M(x1, y1, 1) = (0, 0) and M(x2, y2, 1) = (0, n)
+# Requirements: M(x1, y1, 1) = (0, 0) and M(x2, y2, 1) = (0, n), x1 = 0, x2 = 0
 eq1 = sp.Eq(M[0, 1] * y1 + M[0, 2], 0)
 eq2 = sp.Eq(M[1, 1] * y1 + M[1, 2], 0)
 eq3 = sp.Eq(M[0, 1] * y2 + M[0, 2], 0)
-eq4 = sp.Eq(M[2, 1] * y2 + M[2, 2], 1)
 
 # Constraints: det M != 0 and x1*y2 - x2*y1 = 0
+eq4 = sp.Eq(M[2, 1] * y2 + M[2, 2], 1)
 eq5 = sp.Eq(sp.det(M), 1)
 
 # ========== Solve the system of equations ==========

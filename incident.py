@@ -20,9 +20,9 @@ M = sp.Matrix([[a[0], a[1], a[2]],
 eq1 = sp.Eq(M[0, 0] * x1 + M[0, 1] * y1 + M[0, 2], 0)
 eq2 = sp.Eq(M[1, 0] * x1 + M[1, 1] * y1 + M[1, 2], 0)
 eq3 = sp.Eq(M[0, 0] * x2 + M[0, 1] * y2 + M[0, 2], 0)
-eq4 = sp.Eq(M[2, 0] * x2 + M[2, 1] * y2 + M[2, 2], 1)
 
 # Constraints: det M != 0 and x1*y2 - x2*y1 = 0
+eq4 = sp.Eq(M[2, 0] * x2 + M[2, 1] * y2 + M[2, 2], 1)
 eq5 = sp.Eq(sp.det(M), 1)
 eq6 = sp.Eq(x1 * y2 - x2 * y1, 0)
 
