@@ -83,6 +83,14 @@ for i in range(3):
 det = M_val.det()
 print(colored(f"\nDet M = {det}", 'cyan'))
 
+# Print the inverse of M_val
+M_inv = M_val.inv()
+print(colored("\nInverse of M:", 'cyan'))
+for i in range(3):
+    for j in range(3):
+        print(f"{M_inv[i * 3 + j]:10.4f}", end=" ")
+    print()
+
 # Act on the points with the matrix M
 p1 = M_val * sp.Matrix([x1_val, y1_val, 1])
 p2 = M_val * sp.Matrix([x2_val, y2_val, 1])
