@@ -27,9 +27,17 @@ eq5 = sp.Eq(sp.det(M), 1)
 eq6 = sp.Eq(M[2, 0] * x1 + M[2, 1] * y1 + M[2, 2], 1)
 eq7 = sp.Eq(M[2, 0] * x2 + M[2, 1] * y2 + M[2, 2], 1)
 
+# Orthogonality constraints
+product = M * M.T
+eq8 = sp.Eq(product[0, 0], 1)
+eq9 = sp.Eq(product[1, 1], 1)
+eq10 = sp.Eq(product[2, 2], 1)
+eq11 = sp.Eq(product[0, 1], 0)
+
+
 # ========== Solve the system of equations ==========
 # Solve with respect to the entries of the matrix M
-solution = sp.solve([eq1, eq2, eq3, eq4, eq5, eq6, eq7], a) # Solution is a list
+solution = sp.solve([eq1, eq2, eq3, eq4, eq5, eq8, eq9, eq10], a) # Solution is a list
 solution = solution[0] # Extract only solution from the list
 
 # ========== Print the solution ==========
@@ -71,7 +79,19 @@ M_val = M.subs({
 })
 
 # Substitute points into the matrix M, set a5 = 1, a8 = 1
-M_val = M_val.subs({x1: x1_val, y1: y1_val, x2: x2_val, y2: y2_val, a[5]: 1, a[8]: 1})
+M_val = M_val.subs({x1: x1_val, y1: y1_val, x2: x2_val, y2: y2_val, a[7]: 1, a[8]: 1})
+
+# Check if M_val is orthogonal
+eq11 = sp.Eq(M_val * M_val.T, sp.eye(3))
+print(colored("\nOrthogonality check:", 'cyan'))
+print(eq11)
+product = M_val * M_val.T
+print(f"Product of M_val and its transpose:")
+for i in range(3):
+    for j in range(3):
+        print(f"{sp.simplify(product[i, j])}", end=" ")
+    print()
+
 
 print(colored("\nMatrix M:", 'cyan'))
 for i in range(3):
