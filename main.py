@@ -16,5 +16,7 @@ T = np.vstack((r1, r2, r3))
 Tp1 = T @ p1
 Tp2 = T @ p2
 
+print(f"T = \n{T}")
+
 print("T p1 =", Tp1)
 print("T p2 =", Tp2)
