@@ -99,8 +99,6 @@ if __name__ == "__main__":
             X.append(x)
             Y.append(y)
 
-        
-
 
         # Apply standardization to the points
         R = []
@@ -147,7 +145,7 @@ if __name__ == "__main__":
         })
 
     point = data[0]
-    print(f"Dimension of the feature vector: {len(point['data_point'])}")
+    print(f"Dimension of the data point: {len(point['data_point'])}")
 
     # Count number of labels:
     num_pos = sum([1 for point in data if point["label"] == 1])
