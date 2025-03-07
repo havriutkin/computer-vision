@@ -5,6 +5,39 @@ from points import *
 NUM_OF_CORRESP = 6
 NUM_OF_SAMPLES = 100
 
+def isSO3(R: np.ndarray) -> bool:
+    orthogonality = np.allclose(R @ R.T, np.eye(3))
+    det = np.isclose(np.linalg.det(R), 1)
+
+    return orthogonality and det
+
+class Camera:
+    def __init__(self, rotation: np.ndarray, translation: np.ndarray):
+        assert rotation.shape == (3, 3)
+        assert translation.shape == (3,)
+        assert isSO3(rotation)
+
+        self.rotation = rotation
+        self.translation = translation
+        self.projection_matrix = np.hstack((rotation, translation.reshape(3, 1)))
+
+    def project(self, point: np.ndarray) -> np.ndarray:
+        assert point.shape == (3,)
+
+        extended_point = np.hstack((point, 1))
+        projected = self.projection_matrix @ extended_point
+        dehomogenized = projected / projected[-1]
+
+        return dehomogenized
+    
+    @staticmethod
+    def get_random():
+        rotation = random_so3_cayley()
+        translation = random_point_unit_ball(dim=3)
+
+        return Camera(rotation, translation)
+
+
 def normalize(v):
     return v / np.linalg.norm(v)
 
@@ -14,12 +47,6 @@ def random_points(num: int) -> list[np.ndarray]:
         result.append(random_point_unit_ball(dim=3))
 
     return result
-
-def random_camera() -> np.ndarray:
-    rotation = random_so3_cayley()
-    translation = random_point_unit_ball(dim=3)
-
-    return np.hstack((rotation, translation[:, np.newaxis]))
 
 def essential_matrix(camera_1: np.ndarray, camera_2: np.ndarray) -> np.ndarray:
     R1 = camera_1[:, :3]
@@ -56,112 +83,74 @@ def so3_to_cayley(R: np.ndarray) -> np.ndarray:
 if __name__ == "__main__":
     data = []
 
-    # Generate solvable samples
-    for i in range(NUM_OF_SAMPLES // 2):
-        points = random_points(NUM_OF_CORRESP)
-        camera_1 = random_camera()
-        camera_2 = random_camera()
+    for _ in range(NUM_OF_SAMPLES):
+        camera_1 = Camera.get_random()
+        camera_2 = Camera.get_random()
+        label = 1   # Assume it is solvable
 
-        x = []
-        y = []
+        # Generate random points in the world and project them into the two cameras
+        world_points = random_points(NUM_OF_CORRESP)
+        X = []
+        Y = []
+        for point in world_points:
+            x = camera_1.project(point)
+            y = camera_2.project(point)
 
-        for point in points:
-            extended_point = np.hstack((point, 1))
-            projected_1 = camera_1 @ extended_point
-            projected_2 = camera_2 @ extended_point
+            X.append(x)
+            Y.append(y)
 
-            # Homogenize
-            projected_1 /= projected_1[-1]
-            projected_2 /= projected_2[-1]
-
-            x.append(projected_1)
-            y.append(projected_2)
-
-        transforms_x: list[np.ndarray] = []
-        transforms_y: list[np.ndarray] = []
-        for j in range(NUM_OF_CORRESP // 2):
-            R = special_transform(x[j], x[j + 1])
-            S = special_transform(y[j], y[j + 1])
-
-            transforms_x.append(R)
-            transforms_y.append(S)
         
-        features = []
-        for j in range(len(transforms_x)):
-            R = transforms_x[j].T @ transforms_x[0]
-            S = transforms_y[0].T @ transforms_y[j]
-            x_new = transforms_x[j].T @ x[j + 1]
-            y_new = transforms_y[j].T @ y[j + 1]
+
+
+        # Apply standardization to the points
+        R = []
+        S = []
+        for i in range(NUM_OF_CORRESP - 1):
+            x1, x2 = X[i], X[i + 1]
+            y1, y2 = Y[i], Y[i + 1]
+
+            r = special_transform(x1, x2)
+            s = special_transform(y1, y2)
+
+            R.append(r)
+            S.append(s)
+
+        # Convert data point to the proper format
+        data_point = []
+        for i in range(NUM_OF_CORRESP // 2):
+            r_new = R[i].T @ R[0]
+            s_new = S[0].T @ S[i]
+
+            x_new = R[i].T @ X[i + 1]
+            y_new = S[i].T @ Y[i + 1]
+
             a = float(x_new[1] / x_new[2])
             b = float(y_new[1] / y_new[2])
 
+            r_params = so3_to_cayley(r_new)
+            s_params = so3_to_cayley(s_new)
 
-            R_params = so3_to_cayley(R).tolist()
-            S_params = so3_to_cayley(S).tolist()
-
-            if j != 0:
-                features.extend(R_params)
-                features.extend(S_params)
-            features.extend([a, b])
+            if (i != 0):
+                data_point.extend([float(r) for r in r_params])
+                data_point.extend([float(s) for s in s_params])
+            data_point.extend([a, b])
         
+        # With 50% chance, corrupt random number in data_point
+        if np.random.rand() < 0.5:
+            idx = np.random.randint(len(data_point))
+            data_point[idx] = np.random.rand()
+            label = 0
+
         data.append({
-            "features": features,
-            "label": 1
+            "data_point": data_point,
+            "label": label
         })
 
-    # Generate unsolvable samples
-    for i in range(NUM_OF_SAMPLES // 2):
-        points = random_points(NUM_OF_CORRESP)
-        camera_1 = random_camera()
-        camera_2 = random_camera()
-
-        x = []
-        y = []
-
-        for point in points:
-            extended_point = np.hstack((point, 1))
-            projected_1 = camera_1 @ extended_point
-            projected_2 = random_point_unit_ball(dim=3)
-
-            # Homogenize
-            projected_1 /= projected_1[-1]
-            projected_2 /= projected_2[-1]
-
-            x.append(projected_1)
-            y.append(projected_2)
-
-        transforms_x: list[np.ndarray] = []
-        transforms_y: list[np.ndarray] = []
-        for j in range(NUM_OF_CORRESP // 2):
-            R = special_transform(x[j], x[j + 1])
-            S = special_transform(y[j], y[j + 1])
-
-            transforms_x.append(R)
-            transforms_y.append(S)
-        
-        features = []
-        for j in range(len(transforms_x)):
-            R = transforms_x[j].T @ transforms_x[0]
-            S = transforms_y[0].T @ transforms_y[j]
-
-            x_new = transforms_x[j].T @ x[j + 1]
-            y_new = transforms_y[j].T @ y[j + 1]
-            a = float(x_new[1] / x_new[2])
-            b = float(y_new[1] / y_new[2])
-
-            R_params = so3_to_cayley(R).tolist()
-            S_params = so3_to_cayley(S).tolist()
-
-            if j != 0:
-                features.extend(R_params)
-                features.extend(S_params)
-            features.extend([a, b])
-        
-        data.append({
-            "features": features,
-            "label": 0
-        })
-
-    print(data[:5])
     point = data[0]
-    print(f"Dimension of the feature vector: {len(point['features'])}")
+    print(f"Dimension of the feature vector: {len(point['data_point'])}")
+
+    # Count number of labels:
+    num_pos = sum([1 for point in data if point["label"] == 1])
+    num_neg = sum([1 for point in data if point["label"] == 0])
+    print(f"Number of positive samples: {num_pos}")
+    print(f"Number of negative samples: {num_neg}")
