@@ -1,9 +1,10 @@
 import numpy as np
+import json
 
 from points import *
 
 NUM_OF_CORRESP = 6
-NUM_OF_SAMPLES = 100
+NUM_OF_SAMPLES = 10000
 
 def isSO3(R: np.ndarray) -> bool:
     orthogonality = np.allclose(R @ R.T, np.eye(3))
@@ -83,7 +84,10 @@ def so3_to_cayley(R: np.ndarray) -> np.ndarray:
 if __name__ == "__main__":
     data = []
 
+    print("Generating data...")
     for _ in range(NUM_OF_SAMPLES):
+        if _ % 100 == 0:
+            print(f"Generating sample {_}...")
         camera_1 = Camera.get_random()
         camera_2 = Camera.get_random()
         label = 1   # Assume it is solvable
@@ -143,6 +147,7 @@ if __name__ == "__main__":
             "data_point": data_point,
             "label": label
         })
+    print("Data generation completed.")
 
     point = data[0]
     print(f"Dimension of the data point: {len(point['data_point'])}")
@@ -152,3 +157,8 @@ if __name__ == "__main__":
     num_neg = sum([1 for point in data if point["label"] == 0])
     print(f"Number of positive samples: {num_pos}")
     print(f"Number of negative samples: {num_neg}")
+
+    # Save the data to a file
+    with open("data.json", "w") as f:
+        json.dump(data, f, indent=4)
+
