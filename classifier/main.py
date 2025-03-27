@@ -2,24 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_recall_curve, precision_score, recall_score, f1_score
+from sklearn.preprocessing import RobustScaler
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
 
 class JSONDataset(Dataset):
     """ JSON Dataset """
-    def __init__(self, json_path, scaler=StandardScaler()):
+    def __init__(self, json_path):
         with open(json_path, "r") as f:
             self.data = json.load(f)
-
-        # Apply scaler to the data
-        X = [sample["data_point"] for sample in self.data]
-        X = scaler.fit_transform(X)
-        for i, sample in enumerate(self.data):
-            sample["data_point"] = X[i]
-        
 
     def __len__(self):
         return len(self.data)
@@ -32,31 +25,27 @@ class JSONDataset(Dataset):
 
 class MyModel(nn.Module):
     """ Binary Classification NN """
-    def __init__(self, hidden_dim):
+    def __init__(self):
         super(MyModel, self).__init__()
-        self.fc1 = nn.Linear(18, hidden_dim)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc4 = nn.Linear(hidden_dim, 2)
+        self.network = nn.Sequential(
+            nn.Linear(18, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
+        )
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        x = self.relu(x)
-        x = self.fc3(x)
-        x = self.relu(x)
-        x = self.fc4(x)
-        return x
+        return self.network(x)
 
-EPOCHS = 500
+EPOCHS = 200
 BATCH = 64
 LAYERS = 3
 
 if __name__ == "__main__":
     # Split data into train and test
-    dataset = JSONDataset("data.json")
+    dataset = JSONDataset("../data.json")
+    print(f"Dataset size: {len(dataset)}")
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
@@ -66,15 +55,9 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=BATCH, shuffle=False)
 
     # Initialize model
-    model = nn.Sequential(
-        nn.Linear(18, 32),
-        nn.ReLU(),
-        nn.Linear(32, 32),
-        nn.ReLU(),
-        nn.Linear(32, 2)
-    )
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model = MyModel()
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     # Train model
     train_loses = []    # for visualization
@@ -82,6 +65,8 @@ if __name__ == "__main__":
         epoch_loss = 0
         for i, data in enumerate(train_loader):
             inputs, labels = data
+            labels = labels.unsqueeze(1).float()
+
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)
@@ -99,12 +84,13 @@ if __name__ == "__main__":
     y_true = []
     y_pred = []
     with torch.no_grad():
-        for data in test_loader:
-            inputs, labels = data
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            y_true += labels.tolist()
-            y_pred += predicted.tolist()
+        for inputs, labels in test_loader:
+            logits = model(inputs)
+            probs = torch.sigmoid(logits)
+            predicted = (probs >= 0.5).float()
+
+            y_true += labels.squeeze().tolist()
+            y_pred += predicted.squeeze().tolist()
 
     accuracy = accuracy_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred)

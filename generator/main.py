@@ -4,7 +4,7 @@ import json
 from points import *
 
 NUM_OF_CORRESP = 6
-NUM_OF_SAMPLES = 10000
+NUM_OF_SAMPLES = 1000
 
 def isSO3(R: np.ndarray) -> bool:
     orthogonality = np.allclose(R @ R.T, np.eye(3))
@@ -34,7 +34,7 @@ class Camera:
     @staticmethod
     def get_random():
         rotation = random_so3_cayley()
-        translation = random_point_unit_ball(dim=3)
+        translation = random_point_on_ball(dim=3, radius=1)
 
         return Camera(rotation, translation)
 
@@ -42,10 +42,10 @@ class Camera:
 def normalize(v):
     return v / np.linalg.norm(v)
 
-def random_points(num: int) -> list[np.ndarray]:
+def random_points(num: int, radius: float = 1) -> list[np.ndarray]:
     result = []
     for _ in range(num):
-        result.append(random_point_unit_ball(dim=3))
+        result.append(random_point_on_ball(dim=3, radius=radius))
 
     return result
 
@@ -67,7 +67,7 @@ def special_transform(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     r3 = normalize(p1)
     r1 = normalize(np.cross(p1, p2))
     r2 = np.cross(r3, r1)
-    T = np.column_stack((r1, r2, r3))
+    T = np.vstack((r1, r2, r3))
 
     return T
 
@@ -79,7 +79,10 @@ def so3_to_cayley(R: np.ndarray) -> np.ndarray:
     s2 = S[0, 2]
     s3 = S[1, 0]
 
-    return np.array([s1, s2, s3])
+    s = np.array([s1, s2, s3])
+    s = normalize(s)
+
+    return s
 
 if __name__ == "__main__":
     data = []
@@ -103,8 +106,7 @@ if __name__ == "__main__":
             X.append(x)
             Y.append(y)
 
-
-        # Apply standardization to the points
+        # Find encoding transformations to the points
         R = []
         S = []
         for i in range(NUM_OF_CORRESP - 1):
@@ -125,7 +127,8 @@ if __name__ == "__main__":
 
             x_new = R[i].T @ X[i + 1]
             y_new = S[i].T @ Y[i + 1]
-
+            
+            # Dehomogenization
             a = float(x_new[1] / x_new[2])
             b = float(y_new[1] / y_new[2])
 
@@ -136,29 +139,50 @@ if __name__ == "__main__":
                 data_point.extend([float(r) for r in r_params])
                 data_point.extend([float(s) for s in s_params])
             data_point.extend([a, b])
-        
-        # With 50% chance, corrupt random number in data_point
-        if np.random.rand() < 0.5:
-            idx = np.random.randint(len(data_point))
-            data_point[idx] = np.random.rand()
-            label = 0
 
         data.append({
             "data_point": data_point,
-            "label": label
+            "label": label,
         })
     print("Data generation completed.")
 
-    point = data[0]
-    print(f"Dimension of the data point: {len(point['data_point'])}")
+    # === Normalize a and b across dataset ===
+    print("Normalizing (a, b) values...")
+    all_a = []
+    all_b = []
+    ab_indices = [(0, 1), (8, 9), (16, 17)]
 
-    # Count number of labels:
-    num_pos = sum([1 for point in data if point["label"] == 1])
-    num_neg = sum([1 for point in data if point["label"] == 0])
+    for point in data:
+        for a_idx, b_idx in ab_indices:
+            all_a.append(point["data_point"][a_idx])
+            all_b.append(point["data_point"][b_idx])
+
+    mean_a, std_a = np.mean(all_a), np.std(all_a)
+    mean_b, std_b = np.mean(all_b), np.std(all_b)
+
+    for point in data:
+        for a_idx, b_idx in ab_indices:
+            point["data_point"][a_idx] = (point["data_point"][a_idx] - mean_a) / (std_a + 1e-8)
+            point["data_point"][b_idx] = (point["data_point"][b_idx] - mean_b) / (std_b + 1e-8)
+
+    print("Normalization completed.")
+    print(f"Mean a: {mean_a:.4f}, std a: {std_a:.4f}")
+    print(f"Mean b: {mean_b:.4f}, std b: {std_b:.4f}")
+
+    print("Applying corruption to 50% of samples...")
+    for point in data:
+        if np.random.rand() < 0.5:
+            idx = np.random.randint(len(point["data_point"]))
+            point["data_point"][idx] = random_point_inside_ball(dim=1, radius=10)[0]
+            point["label"] = 0
+
+    # Count number of labels
+    num_pos = sum(1 for point in data if point["label"] == 1)
+    num_neg = sum(1 for point in data if point["label"] == 0)
     print(f"Number of positive samples: {num_pos}")
     print(f"Number of negative samples: {num_neg}")
 
-    # Save the data to a file
+    # Save to file
     with open("data.json", "w") as f:
         json.dump(data, f, indent=4)
 
