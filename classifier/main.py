@@ -7,6 +7,9 @@ from sklearn.preprocessing import RobustScaler
 import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import numpy as np
+
 
 class JSONDataset(Dataset):
     """ JSON Dataset """
@@ -30,15 +33,15 @@ class MyModel(nn.Module):
         self.network = nn.Sequential(
             nn.Linear(18, 64),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(64, 1)
+            nn.Linear(32, 1)
         )
 
     def forward(self, x):
         return self.network(x)
 
-EPOCHS = 200
+EPOCHS = 100
 BATCH = 32
 LAYERS = 3
 
@@ -171,12 +174,13 @@ if __name__ == "__main__":
             print(f"  Recall:      {recall:.4f}")
             print(f"  F1 Score:    {f1:.4f}")
 
-    print("Prediction distribution:", Counter(int(p) for p in all_preds))
+
     # Save model
     #torch.save(model.state_dict(), "model.pth")
     #print("Model saved")
 
     # Visualize training loss
+    print("Prediction distribution:", Counter(map(int, np.array(all_preds).flatten())))
     epochs = range(1, len(train_losses) + 1)
 
     plt.hist(all_probs, bins=50)
@@ -220,5 +224,24 @@ if __name__ == "__main__":
     plt.xlabel("Epoch")
     plt.ylabel("L2 Norm")
     plt.legend()
+    plt.show()
+
+    # ROC curve
+    from sklearn.metrics import roc_curve, auc, precision_recall_curve
+    fpr, tpr, _ = roc_curve(all_labels, all_probs)
+    precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+
+    plt.plot(fpr, tpr)
+    plt.title("ROC Curve")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.grid(True)
+    plt.show()
+
+    plt.plot(recall, precision)
+    plt.title("Precision-Recall Curve")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.grid(True)
     plt.show()
 
