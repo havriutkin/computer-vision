@@ -17,9 +17,9 @@ def random_point_inside_ball(dim: int = 3, radius: float = 1, threshold: float =
 
     return vec
 
-def random_so3_cayley() -> np.ndarray:
+def random_so3_cayley(radius: float = 0.3) -> np.ndarray:
     """ Generate a random rotation matrix in SO(3) using Cayley's parametrization """
-    a = random_point_on_ball(dim=3, radius=1)  
+    a = random_point_on_ball(dim=3, radius=radius)  #todo: parametrize
 
     A = np.array([[ 0, -a[2], a[1]],
                   [ a[2], 0, -a[0]],

@@ -57,8 +57,6 @@ if __name__ == "__main__":
     label_counts = Counter(int(label.item()) for _, label in dataset)
     print("Label distribution in dataset:", label_counts)
 
-    exit
-
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=BATCH, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH, shuffle=False)

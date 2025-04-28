@@ -3,6 +3,7 @@
         "allclose",
         "CORRESP",
         "hstack",
+        "preds",
         "randn"
     ]
 }

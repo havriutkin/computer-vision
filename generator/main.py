@@ -1,16 +1,18 @@
 import numpy as np
+from sympy import Matrix
 import json
 
 from points import *
 
 NUM_OF_CORRESP = 6
-NUM_OF_SAMPLES = 1000
+NUM_OF_SAMPLES = 10000
 
 def isSO3(R: np.ndarray) -> bool:
     orthogonality = np.allclose(R @ R.T, np.eye(3))
     det = np.isclose(np.linalg.det(R), 1)
 
     return orthogonality and det
+
 
 class Camera:
     def __init__(self, rotation: np.ndarray, translation: np.ndarray):
@@ -31,13 +33,52 @@ class Camera:
 
         return dehomogenized
     
+    def get_kernel(self):
+        matr = Matrix(self.projection_matrix)
+        kernel = matr.nullspace()
+        kernel = np.array(kernel[0]).astype(np.float64)
+
+        return kernel
+    
     @staticmethod
     def get_random():
+        
+        flag = False
+        while not flag:
+            rotation = random_so3_cayley()
+            translation = random_point_on_ball(dim=3, radius=5)
+
+            c = Camera(rotation, translation)
+
+            #todo: test it
+            # Condition 1
+            kernel = c.get_kernel()
+            kernel /= kernel[-1]
+            kernel = kernel[:2]
+            #print(kernel)
+            norm1 = np.linalg.norm(kernel)
+
+            # Condition 2
+            translation_dehom = c.translation / c.translation[-1]
+            translation_dehom = translation_dehom[:2]
+            norm2 = np.linalg.norm(translation_dehom)
+
+            if norm1 > 2 and norm2 < 1:
+                flag = True
+
+        return c
+
+    @staticmethod
+    def get_simple_camera_pair(d: float = 3.0):
+        """ Return camera [R | t] such that R = I, t = [0, 0, -d]"""
+        identity = np.eye(3)
+        translation = np.array([0, 0, -d])
+        camera_1 = Camera(identity, translation)
+
         rotation = random_so3_cayley()
-        translation = random_point_on_ball(dim=3, radius=1)
+        camera_2 = Camera(rotation, translation)
 
-        return Camera(rotation, translation)
-
+        return camera_1, camera_2
 
 def normalize(v):
     return v / np.linalg.norm(v)
@@ -80,7 +121,6 @@ def so3_to_cayley(R: np.ndarray) -> np.ndarray:
     s3 = S[1, 0]
 
     s = np.array([s1, s2, s3])
-    s = normalize(s)
 
     return s
 
@@ -91,8 +131,7 @@ if __name__ == "__main__":
     for _ in range(NUM_OF_SAMPLES):
         if _ % 100 == 0:
             print(f"Generating sample {_}...")
-        camera_1 = Camera.get_random()
-        camera_2 = Camera.get_random()
+        camera_1, camera_2 = Camera.get_simple_camera_pair(d=3.0)
         label = 1   # Assume it is solvable
 
         # Generate random points in the world and project them into the two cameras
@@ -101,7 +140,15 @@ if __name__ == "__main__":
         Y = []
         for point in world_points:
             x = camera_1.project(point)
-            y = camera_2.project(point)
+            y = camera_2.project(point) 
+            if np.random.rand() < 0.1:
+                label = 0
+                if np.random.rand() < 0.5:
+                    x = random_point_inside_ball(dim=3, radius=10)
+                    x[2] = 1
+                else:
+                    y = random_point_inside_ball(dim=3, radius=10)
+                    y[2] = 1
 
             X.append(x)
             Y.append(y)
@@ -147,6 +194,7 @@ if __name__ == "__main__":
     print("Data generation completed.")
 
     # === Normalize a and b across dataset ===
+    """
     print("Normalizing (a, b) values...")
     all_a = []
     all_b = []
@@ -168,13 +216,14 @@ if __name__ == "__main__":
     print("Normalization completed.")
     print(f"Mean a: {mean_a:.4f}, std a: {std_a:.4f}")
     print(f"Mean b: {mean_b:.4f}, std b: {std_b:.4f}")
+    """
 
-    print("Applying corruption to 50% of samples...")
-    for point in data:
-        if np.random.rand() < 0.5:
-            idx = np.random.randint(len(point["data_point"]))
-            point["data_point"][idx] = random_point_inside_ball(dim=1, radius=10)[0]
-            point["label"] = 0
+    # print("Applying corruption to 50% of samples...")
+    # for point in data:
+    #     if np.random.rand() < 0.5:
+    #         idx = np.random.randint(len(point["data_point"]))
+    #         point["data_point"][idx] = random_point_inside_ball(dim=1, radius=10)[0]
+    #         point["label"] = 0
 
     # Count number of labels
     num_pos = sum(1 for point in data if point["label"] == 1)
