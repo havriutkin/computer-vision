@@ -9,14 +9,14 @@ from tqdm import tqdm
 
 TOLERANCE = 1.0
 MAX_ITERS = 10000   # max sextuple tests per image‐pair
-MAX_PAIRS = 100
+MAX_PAIRS = 100     # max image pairs
 
 def decode_pair_id(pair_id):
     image_id2 = pair_id % 2147483647
     image_id1 = (pair_id - image_id2) / 2147483647
     return int(image_id1), int(image_id2)
 
-# 1) Load keypoints + raw matches
+# Load keypoints + raw matches
 DB_PATH     = "../dataset/south-building/database.db"
 conn        = sqlite3.connect(DB_PATH)
 cursor      = conn.cursor()
@@ -39,7 +39,7 @@ cursor.close()
 conn.close()
 print(f"Number of image‐pairs: {len(pair_matches)}")
 
-# 2) Sample up to MAX_PAIRS random image‐pairs
+# Sample up to MAX_PAIRS random image‐pairs
 all_pairs = list(pair_matches.keys())
 if len(all_pairs) > MAX_PAIRS:
     selected_pairs = random.sample(all_pairs, MAX_PAIRS)
@@ -47,10 +47,10 @@ else:
     selected_pairs = all_pairs
 print(f"Processing {len(selected_pairs)} image‐pairs (random subset)")
 
-# 2) Load the sparse reconstruction (for intrinsics)
+# Load the sparse reconstruction (for intrinsics)
 recon = pycolmap.Reconstruction("../dataset/south-building/sparse")
 
-# 3) Minimal‐solver options: disable RANSAC, single trial
+# Minimal‐solver options: disable RANSAC, single trial
 minimal_opts = pycolmap.RANSACOptions(
     max_error=TOLERANCE,
     confidence=0.0,
@@ -59,7 +59,7 @@ minimal_opts = pycolmap.RANSACOptions(
     min_inlier_ratio=1.0
 )
 
-# 4) Prepare CSV output
+# Prepare CSV output
 csv_path = "labeled_six_tuples.csv"
 with open(csv_path, "w", newline="") as f:
     writer = csv.writer(f)
@@ -69,7 +69,7 @@ with open(csv_path, "w", newline="") as f:
     header += ["label"]
     writer.writerow(header)
 
-    # 5) Main loop with progress bar over image‐pairs
+    # Main loop with progress bar over image‐pairs
     for img_pair in tqdm(selected_pairs,
                          desc="Image pairs",
                          unit="pair"):

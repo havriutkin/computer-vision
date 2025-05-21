@@ -47,7 +47,7 @@ with open("data.csv", "w", newline="") as f:
         corr = X[i]
         label = y[i]
 
-        # correctly pick out just the (x,y) pairs for each camera
+        # Pick pairs 
         x1 = np.array([corr[0,0], corr[0,1], 1.0])
         x2 = np.array([corr[1,0], corr[1,1], 1.0])
         x3 = np.array([corr[2,0], corr[2,1], 1.0])
@@ -63,7 +63,7 @@ with open("data.csv", "w", newline="") as f:
         y6 = np.array([corr[5,2], corr[5,3], 1.0])
 
         try:
-            # now your debug prints will actually execute
+            # Apply straightening
             R1, a1 = straightening(x1, x2)
             R2, a2 = straightening(x3, x4)
             R3, a3 = straightening(x5, x6)
