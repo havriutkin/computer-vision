@@ -75,6 +75,7 @@ with open(csv_path, "w", newline="") as f:
                          unit="pair"):
         img1, img2 = img_pair
         img1 = int(img1); img2 = int(img2)
+        pts1, pts2 = pair_matches[(img1, img2)]
         cam1 = recon.images[img1].camera
         cam2 = recon.images[img2].camera
 
