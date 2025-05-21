@@ -9,24 +9,24 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import matplotlib.pyplot as plt
 import os
 
-# 1) Load preprocessed data
+# Load preprocessed data
 df = pd.read_csv("data.csv")
 data = df.values
 X = data[:, :-1].astype(np.float32)
 y = data[:, -1].astype(np.float32)
 
-# 2) Train/test split
+# Train/test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# 3) Create DataLoaders
+# Create DataLoaders
 train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
 test_ds  = TensorDataset(torch.from_numpy(X_test),  torch.from_numpy(y_test))
 train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
 test_loader  = DataLoader(test_ds,  batch_size=32)
 
-# 4) Define MLP
+# Define MLP
 class MLP(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
@@ -48,7 +48,7 @@ model = MLP(X.shape[1]).to(device)
 criterion = nn.BCELoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-# 5) Training loop with metrics
+#cTraining loop with metrics
 num_epochs = 20
 history = {'train_loss': [], 'val_loss': []}
 
@@ -80,7 +80,7 @@ for epoch in range(1, num_epochs+1):
     
     print(f"Epoch {epoch}/{num_epochs} - train loss: {epoch_loss:.4f}, val loss: {val_loss:.4f}")
 
-# 6) Plot and save training curves
+# Plot and save training curves
 plt.figure()
 plt.plot(history['train_loss'])
 plt.plot(history['val_loss'])
@@ -90,7 +90,7 @@ plt.ylabel('Loss')
 plt.legend(['Train','Validation'])
 plt.savefig('/mnt/data/loss_curve.png')
 
-# 7) ROC and Precision-Recall curves
+# ROC and Precision-Recall curves
 model.eval()
 y_scores = []
 y_true = []
@@ -120,7 +120,7 @@ plt.xlabel('Recall')
 plt.ylabel('Precision')
 plt.savefig('/mnt/data/pr_curve.png')
 
-# 8) Save model state_dict and TorchScript module
+# Save model state_dict and TorchScript module
 os.makedirs('/mnt/data/model', exist_ok=True)
 torch.save(model.state_dict(), '/mnt/data/model/model_state.pth')
 scripted = torch.jit.script(model.cpu())
