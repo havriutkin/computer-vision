@@ -121,9 +121,22 @@ with open(csv_path, "w", newline="") as f:
 
                 E_cand = result["E"]
                 idx6   = (set(range(6)) - set(five_idxs)).pop()
-                u1_6   = np.array([*pts1_6[idx6], 1.0])
-                u2_6   = np.array([*pts2_6[idx6], 1.0])
-                err6   = abs(u2_6 @ E_cand @ u1_6)
+
+                # extract the pixel coords of the 6th point
+                x1, y1 = pts1_6[idx6]
+                x2, y2 = pts2_6[idx6]
+
+                # get the inverse intrinsics
+                K1 = cam1.calibration_matrix()
+                K2 = cam2.calibration_matrix()
+
+                # normalize to camera coords
+                u1_n = np.linalg.inv(K1) @ np.array([x1, y1, 1.0])
+                u2_n = np.linalg.inv(K2) @ np.array([x2, y2, 1.0])
+
+                # compute the epipolar error
+                err6 = abs(u2_n @ E_cand @ u1_n)
+                print(err6)
 
                 if err6 < TOLERANCE:
                     solvable = True
